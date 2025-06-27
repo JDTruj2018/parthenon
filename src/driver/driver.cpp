@@ -32,6 +32,8 @@
 #include "parthenon_mpi.hpp"
 #include "utils/utils.hpp"
 
+#include "vernier.h"
+
 namespace parthenon {
 using SignalHandler::OutputSignal;
 
@@ -146,6 +148,12 @@ DriverStatus EvolutionDriver::Execute() {
       if (tm.ncycle == perf_cycle_offset) {
         pmesh->mbcnt = 0;
         timer_main.reset();
+      }
+
+      if (tm.ncycle % tm.ncycle_out == 0) {
+        MPI_Barrier(MPI_COMM_WORLD);
+        flush();
+        MPI_Barrier(MPI_COMM_WORLD);
       }
     } // END OF MAIN INTEGRATION LOOP
       // ======================================================

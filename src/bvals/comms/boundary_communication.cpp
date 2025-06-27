@@ -107,7 +107,6 @@ TaskStatus SendBoundBufs(std::shared_ptr<MeshData<Real>> &md) {
         if (!bnd_info(b).allocated || bnd_info(b).same_to_same) {
           Kokkos::single(Kokkos::PerTeam(team_member),
                          [&]() { sending_nonzero_flags(b) = false; });
-          end_pattern();
           return;
         }
         Real threshold = bnd_info(b).var.allocation_threshold;
