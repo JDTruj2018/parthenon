@@ -320,6 +320,9 @@ set_target_properties(parthenon PROPERTIES SOVERSION ${parthenon_VERSION})
 
 target_compile_features(parthenon PUBLIC cxx_std_17)
 
+target_link_libraries(parthenon PUBLIC /vast/home/jereddt/UNM/HPEC/Vernier-hist/install/lib/libvernier.so)
+target_include_directories(parthenon PUBLIC /vast/home/jereddt/UNM/HPEC/Vernier-hist/install/include)
+
 # This will automatically link any extra libraries (or no extra libraries)
 # depending on the compiler, so it doesn't require an if() statement
 target_link_libraries(parthenon PUBLIC std::filesystem)

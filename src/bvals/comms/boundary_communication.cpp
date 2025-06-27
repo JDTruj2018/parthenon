@@ -40,6 +40,8 @@
 #include "utils/error_checking.hpp"
 #include "utils/loop_utils.hpp"
 
+#include "vernier.h"
+
 namespace parthenon {
 
 using namespace loops;
@@ -48,6 +50,8 @@ using namespace loops::shorthands;
 template <BoundaryType bound_type>
 TaskStatus SendBoundBufs(std::shared_ptr<MeshData<Real>> &md) {
   PARTHENON_INSTRUMENT
+
+  begin_pattern("SendBoundBufs");
 
   Mesh *pmesh = md->GetMeshPointer();
   auto &cache = md->GetBvarsCache().GetSubCache(bound_type, true);
@@ -60,9 +64,11 @@ TaskStatus SendBoundBufs(std::shared_ptr<MeshData<Real>> &md) {
       CheckSendBufferCacheForRebuild<bound_type, true>(md);
 
   if (nbound == 0) {
+    end_pattern();
     return TaskStatus::complete;
   }
   if (other_communication_unfinished) {
+    end_pattern();
     return TaskStatus::incomplete;
   }
 
@@ -101,6 +107,7 @@ TaskStatus SendBoundBufs(std::shared_ptr<MeshData<Real>> &md) {
         if (!bnd_info(b).allocated || bnd_info(b).same_to_same) {
           Kokkos::single(Kokkos::PerTeam(team_member),
                          [&]() { sending_nonzero_flags(b) = false; });
+          end_pattern();
           return;
         }
         Real threshold = bnd_info(b).var.allocation_threshold;
@@ -155,6 +162,8 @@ TaskStatus SendBoundBufs(std::shared_ptr<MeshData<Real>> &md) {
       buf.SendNull();
   }
 
+  end_pattern();
+
   return TaskStatus::complete;
 }
 
@@ -172,6 +181,9 @@ SendBoundBufs<BoundaryType::flxcor_send>(std::shared_ptr<MeshData<Real>> &);
 template <BoundaryType bound_type>
 TaskStatus StartReceiveBoundBufs(std::shared_ptr<MeshData<Real>> &md) {
   PARTHENON_INSTRUMENT
+
+  begin_pattern("StartReceiveBoundBufs");
+
   Mesh *pmesh = md->GetMeshPointer();
   auto &cache = md->GetBvarsCache().GetSubCache(bound_type, false);
   if (cache.buf_vec.size() == 0)
@@ -180,6 +192,8 @@ TaskStatus StartReceiveBoundBufs(std::shared_ptr<MeshData<Real>> &md) {
 
   std::for_each(std::begin(cache.buf_vec), std::end(cache.buf_vec),
                 [](auto pbuf) { pbuf->TryStartReceive(); });
+
+  end_pattern();
 
   return TaskStatus::complete;
 }
@@ -200,6 +214,8 @@ StartReceiveBoundBufs<BoundaryType::flxcor_recv>(std::shared_ptr<MeshData<Real>>
 template <BoundaryType bound_type>
 TaskStatus ReceiveBoundBufs(std::shared_ptr<MeshData<Real>> &md) {
   PARTHENON_INSTRUMENT
+
+  begin_pattern("ReceiveBoundBufs");
 
   Mesh *pmesh = md->GetMeshPointer();
   auto &cache = md->GetBvarsCache().GetSubCache(bound_type, false);
@@ -230,6 +246,9 @@ TaskStatus ReceiveBoundBufs(std::shared_ptr<MeshData<Real>> &md) {
           ++ibound;
         });
   }
+
+  end_pattern();
+
   if (all_received) return TaskStatus::complete;
   return TaskStatus::incomplete;
 }
@@ -389,6 +408,7 @@ TaskStatus ProlongateBounds(std::shared_ptr<MeshData<Real>> &md) {
     refinement::ProlongateInternal(resolved_packages, cache.prores_cache, pmb->cellbounds,
                                    pmb->c_cellbounds);
   }
+
   return TaskStatus::complete;
 }
 
