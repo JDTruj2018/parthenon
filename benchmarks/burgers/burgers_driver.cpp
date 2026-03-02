@@ -88,7 +88,7 @@ TaskCollection BurgersDriver::MakeTaskCollection(BlockList_t &blocks, const int 
     std::string start_bnd_name = "start_bnd";
     auto start_bnd = tl.AddTask(none, parthenon::StartReceiveBoundBufs<any>, mc1, start_bnd_name);
 
-    std::string start_flx_recv_name = "start_flx_recv_name";
+    std::string start_flx_recv_name = "start_flx_recv";
     auto start_flx_recv = tl.AddTask(none, parthenon::StartReceiveFluxCorrections, mc0, start_flx_recv_name);
 
     // this is the main task where most of the real work is done
