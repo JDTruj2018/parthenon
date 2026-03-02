@@ -647,13 +647,14 @@ void Mesh::CommunicateBoundaries(std::string md_name,
   bool all_sent;
   std::int64_t send_iters = 0;
 
+  std::string mesh_send_name = "MeshCommunicateBoundaries_send";
   auto partitions = GetDefaultBlockPartitions();
   do {
     all_sent = true;
     for (int i = 0; i < partitions.size(); ++i) {
       auto &md = mesh_data.Add(md_name, partitions[i], fields);
       if (!sent[i]) {
-        if (SendBoundaryBuffers(md) != TaskStatus::complete) {
+        if (SendBoundaryBuffers(md, mesh_send_name) != TaskStatus::complete) {
           all_sent = false;
         } else {
           sent[i] = true;
@@ -669,6 +670,7 @@ void Mesh::CommunicateBoundaries(std::string md_name,
   // wait to receive FillGhost variables
   // TODO(someone) evaluate if ReceiveWithWait kind of logic is better, also related to
   // https://github.com/lanl/parthenon/issues/418
+  std::string mesh_recv_name = "MeshCommunicateBoundaries_recv";
   std::vector<bool> received(num_partitions, false);
   bool all_received;
   std::int64_t receive_iters = 0;
@@ -677,7 +679,7 @@ void Mesh::CommunicateBoundaries(std::string md_name,
     for (int i = 0; i < partitions.size(); ++i) {
       auto &md = mesh_data.Add(md_name, partitions[i], fields);
       if (!received[i]) {
-        if (ReceiveBoundaryBuffers(md) != TaskStatus::complete) {
+        if (ReceiveBoundaryBuffers(md, mesh_recv_name) != TaskStatus::complete) {
           all_received = false;
         } else {
           received[i] = true;
@@ -689,11 +691,11 @@ void Mesh::CommunicateBoundaries(std::string md_name,
   PARTHENON_REQUIRE(
       receive_iters < max_it,
       "Too many iterations waiting to receive boundary communication buffers.");
-
+  std::string mesh_set_name = "MeshCommunicateBoundaries_set";
   for (auto &partition : partitions) {
     auto &md = mesh_data.Add(md_name, partition, fields);
     // unpack FillGhost variables
-    SetBoundaries(md);
+    SetBoundaries(md, mesh_set_name);
   }
 
   //  Now do prolongation, compute primitives, apply BCs

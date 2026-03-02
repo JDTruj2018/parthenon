@@ -45,8 +45,6 @@
 #include "utils/buffer_utils.hpp"
 #include "utils/error_checking.hpp"
 
-#include "vernier.h"
-
 namespace parthenon {
 
 #ifdef MPI_PARALLEL
@@ -315,8 +313,6 @@ void Mesh::LoadBalancingAndAdaptiveMeshRefinement(ParameterInput *pin,
                                                   ApplicationInput *app_in) {
   PARTHENON_INSTRUMENT
 
-  begin_pattern("LoadBalancingAndAdaptiveMeshRefinement");
-
   int nnew = 0, ndel = 0;
 
   if (adaptive) {
@@ -341,8 +337,6 @@ void Mesh::LoadBalancingAndAdaptiveMeshRefinement(ParameterInput *pin,
     }
     lb_flag_ = false;
   }
-
-  end_pattern();
 }
 
 // Private routines

@@ -39,25 +39,25 @@ template <typename T>
 class Variable;
 
 template <BoundaryType bound_type>
-TaskStatus SendBoundBufs(std::shared_ptr<MeshData<Real>> &md);
+TaskStatus SendBoundBufs(std::shared_ptr<MeshData<Real>> &md, std::string& pattern_name);
 template <BoundaryType bound_type>
-TaskStatus StartReceiveBoundBufs(std::shared_ptr<MeshData<Real>> &md);
+TaskStatus StartReceiveBoundBufs(std::shared_ptr<MeshData<Real>> &md, std::string& pattern_name);
 template <BoundaryType bound_type>
-TaskStatus ReceiveBoundBufs(std::shared_ptr<MeshData<Real>> &md);
+TaskStatus ReceiveBoundBufs(std::shared_ptr<MeshData<Real>> &md, std::string& pattern_name);
 template <BoundaryType bound_type>
-TaskStatus SetBounds(std::shared_ptr<MeshData<Real>> &md);
+TaskStatus SetBounds(std::shared_ptr<MeshData<Real>> &md, std::string& pattern_name);
 
-inline TaskStatus SendBoundaryBuffers(std::shared_ptr<MeshData<Real>> &md) {
-  return SendBoundBufs<BoundaryType::any>(md);
+inline TaskStatus SendBoundaryBuffers(std::shared_ptr<MeshData<Real>> &md, std::string& pattern_name) {
+  return SendBoundBufs<BoundaryType::any>(md, pattern_name);
 }
-inline TaskStatus StartReceiveBoundaryBuffers(std::shared_ptr<MeshData<Real>> &md) {
-  return StartReceiveBoundBufs<BoundaryType::any>(md);
+inline TaskStatus StartReceiveBoundaryBuffers(std::shared_ptr<MeshData<Real>> &md, std::string& pattern_name) {
+  return StartReceiveBoundBufs<BoundaryType::any>(md, pattern_name);
 }
-inline TaskStatus ReceiveBoundaryBuffers(std::shared_ptr<MeshData<Real>> &md) {
-  return ReceiveBoundBufs<BoundaryType::any>(md);
+inline TaskStatus ReceiveBoundaryBuffers(std::shared_ptr<MeshData<Real>> &md, std::string& pattern_name) {
+  return ReceiveBoundBufs<BoundaryType::any>(md, pattern_name);
 }
-inline TaskStatus SetBoundaries(std::shared_ptr<MeshData<Real>> &md) {
-  return SetBounds<BoundaryType::any>(md);
+inline TaskStatus SetBoundaries(std::shared_ptr<MeshData<Real>> &md, std::string& pattern_name) {
+  return SetBounds<BoundaryType::any>(md, pattern_name);
 }
 
 template <BoundaryType bound_type>
@@ -66,17 +66,17 @@ inline TaskStatus ProlongateBoundaries(std::shared_ptr<MeshData<Real>> &md) {
   return ProlongateBounds<BoundaryType::any>(md);
 }
 
-static TaskStatus StartReceiveFluxCorrections(std::shared_ptr<MeshData<Real>> &md) {
-  return StartReceiveBoundBufs<BoundaryType::flxcor_recv>(md);
+static TaskStatus StartReceiveFluxCorrections(std::shared_ptr<MeshData<Real>> &md, std::string& pattern_name) {
+  return StartReceiveBoundBufs<BoundaryType::flxcor_recv>(md, pattern_name);
 }
-static TaskStatus LoadAndSendFluxCorrections(std::shared_ptr<MeshData<Real>> &md) {
-  return SendBoundBufs<BoundaryType::flxcor_send>(md);
+static TaskStatus LoadAndSendFluxCorrections(std::shared_ptr<MeshData<Real>> &md, std::string& pattern_name) {
+  return SendBoundBufs<BoundaryType::flxcor_send>(md, pattern_name);
 }
-static TaskStatus ReceiveFluxCorrections(std::shared_ptr<MeshData<Real>> &md) {
-  return ReceiveBoundBufs<BoundaryType::flxcor_recv>(md);
+static TaskStatus ReceiveFluxCorrections(std::shared_ptr<MeshData<Real>> &md, std::string& pattern_name) {
+  return ReceiveBoundBufs<BoundaryType::flxcor_recv>(md, pattern_name);
 }
-static TaskStatus SetFluxCorrections(std::shared_ptr<MeshData<Real>> &md) {
-  return SetBounds<BoundaryType::flxcor_recv>(md);
+static TaskStatus SetFluxCorrections(std::shared_ptr<MeshData<Real>> &md, std::string& pattern_name) {
+  return SetBounds<BoundaryType::flxcor_recv>(md, pattern_name);
 }
 
 // Adds all relevant boundary communication to a single task list

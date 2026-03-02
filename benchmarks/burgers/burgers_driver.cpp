@@ -85,15 +85,23 @@ TaskCollection BurgersDriver::MakeTaskCollection(BlockList_t &blocks, const int 
 
     const auto any = parthenon::BoundaryType::any;
 
-    auto start_bnd = tl.AddTask(none, parthenon::StartReceiveBoundBufs<any>, mc1);
-    auto start_flx_recv = tl.AddTask(none, parthenon::StartReceiveFluxCorrections, mc0);
+    std::string start_bnd_name = "start_bnd";
+    auto start_bnd = tl.AddTask(none, parthenon::StartReceiveBoundBufs<any>, mc1, start_bnd_name);
+
+    std::string start_flx_recv_name = "start_flx_recv_name";
+    auto start_flx_recv = tl.AddTask(none, parthenon::StartReceiveFluxCorrections, mc0, start_flx_recv_name);
 
     // this is the main task where most of the real work is done
     auto flx = tl.AddTask(none, burgers_package::CalculateFluxes, mc0.get());
 
-    auto send_flx = tl.AddTask(flx, parthenon::LoadAndSendFluxCorrections, mc0);
-    auto recv_flx = tl.AddTask(start_flx_recv, parthenon::ReceiveFluxCorrections, mc0);
-    auto set_flx = tl.AddTask(recv_flx, parthenon::SetFluxCorrections, mc0);
+    std::string send_flx_name = "send_flx";
+    auto send_flx = tl.AddTask(flx, parthenon::LoadAndSendFluxCorrections, mc0, send_flx_name);
+
+    std::string recv_flx_name = "recv_flx";
+    auto recv_flx = tl.AddTask(start_flx_recv, parthenon::ReceiveFluxCorrections, mc0, recv_flx_name);
+
+    std::string set_flx_name = "set_flx";
+    auto set_flx = tl.AddTask(recv_flx, parthenon::SetFluxCorrections, mc0, set_flx_name);
 
     // compute the divergence of fluxes of conserved variables
     auto flux_div =
@@ -108,15 +116,25 @@ TaskCollection BurgersDriver::MakeTaskCollection(BlockList_t &blocks, const int 
     // do boundary exchange
     const auto local = parthenon::BoundaryType::local;
     const auto nonlocal = parthenon::BoundaryType::nonlocal;
-    auto send = tl.AddTask(update, parthenon::SendBoundBufs<nonlocal>, mc1);
 
-    auto send_local = tl.AddTask(update, parthenon::SendBoundBufs<local>, mc1);
-    auto recv_local = tl.AddTask(update, parthenon::ReceiveBoundBufs<local>, mc1);
-    auto set_local = tl.AddTask(recv_local, parthenon::SetBounds<local>, mc1);
+    std::string send_name = "send";
+    auto send = tl.AddTask(update, parthenon::SendBoundBufs<nonlocal>, mc1, send_name);
 
+    std::string send_local_name = "send_local";
+    auto send_local = tl.AddTask(update, parthenon::SendBoundBufs<local>, mc1, send_local_name);
+
+    std::string recv_local_name = "recv_local";
+    auto recv_local = tl.AddTask(update, parthenon::ReceiveBoundBufs<local>, mc1, recv_local_name);
+
+    std::string set_local_name = "set_local";
+    auto set_local = tl.AddTask(recv_local, parthenon::SetBounds<local>, mc1, set_local_name);
+
+    std::string recv_name = "recv";
     auto recv =
-        tl.AddTask(start_bnd | update, parthenon::ReceiveBoundBufs<nonlocal>, mc1);
-    auto set = tl.AddTask(recv, parthenon::SetBounds<nonlocal>, mc1);
+        tl.AddTask(start_bnd | update, parthenon::ReceiveBoundBufs<nonlocal>, mc1, recv_name);
+
+    std::string set_name = "set";
+    auto set = tl.AddTask(recv, parthenon::SetBounds<nonlocal>, mc1, set_name);
 
     auto fill_deriv = tl.AddTask(update, FillDerived<MeshData<Real>>, mc1.get());
 

@@ -397,7 +397,7 @@ include(GNUInstallDirs)
 set(CMAKE_INSTALL_INCLUDEDIR "${CMAKE_INSTALL_INCLUDEDIR}/parthenon")
 
 add_subdirectory(src)
-add_subdirectory(example)
+#add_subdirectory(example)
 add_subdirectory(benchmarks)
 
 create_pathenon_coverage_targets()

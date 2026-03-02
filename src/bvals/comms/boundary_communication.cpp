@@ -48,10 +48,8 @@ using namespace loops;
 using namespace loops::shorthands;
 
 template <BoundaryType bound_type>
-TaskStatus SendBoundBufs(std::shared_ptr<MeshData<Real>> &md) {
+TaskStatus SendBoundBufs(std::shared_ptr<MeshData<Real>> &md, std::string& pattern_name) {
   PARTHENON_INSTRUMENT
-
-  begin_pattern("SendBoundBufs");
 
   Mesh *pmesh = md->GetMeshPointer();
   auto &cache = md->GetBvarsCache().GetSubCache(bound_type, true);
@@ -64,11 +62,9 @@ TaskStatus SendBoundBufs(std::shared_ptr<MeshData<Real>> &md) {
       CheckSendBufferCacheForRebuild<bound_type, true>(md);
 
   if (nbound == 0) {
-    end_pattern();
     return TaskStatus::complete;
   }
   if (other_communication_unfinished) {
-    end_pattern();
     return TaskStatus::incomplete;
   }
 
@@ -153,6 +149,8 @@ TaskStatus SendBoundBufs(std::shared_ptr<MeshData<Real>> &md) {
     Kokkos::fence();
 #endif
 
+  begin_pattern(pattern_name.c_str());
+
   for (int ibuf = 0; ibuf < cache.buf_vec.size(); ++ibuf) {
     auto &buf = *cache.buf_vec[ibuf];
     if (sending_nonzero_flags_h(ibuf) || !Globals::sparse_config.enabled)
@@ -166,28 +164,28 @@ TaskStatus SendBoundBufs(std::shared_ptr<MeshData<Real>> &md) {
   return TaskStatus::complete;
 }
 
-template TaskStatus SendBoundBufs<BoundaryType::any>(std::shared_ptr<MeshData<Real>> &);
-template TaskStatus SendBoundBufs<BoundaryType::local>(std::shared_ptr<MeshData<Real>> &);
+template TaskStatus SendBoundBufs<BoundaryType::any>(std::shared_ptr<MeshData<Real>> &, std::string& pattern_name);
+template TaskStatus SendBoundBufs<BoundaryType::local>(std::shared_ptr<MeshData<Real>> &, std::string& pattern_name);
 template TaskStatus
-SendBoundBufs<BoundaryType::nonlocal>(std::shared_ptr<MeshData<Real>> &);
+SendBoundBufs<BoundaryType::nonlocal>(std::shared_ptr<MeshData<Real>> &, std::string& pattern_name);
 template TaskStatus
-SendBoundBufs<BoundaryType::gmg_restrict_send>(std::shared_ptr<MeshData<Real>> &);
+SendBoundBufs<BoundaryType::gmg_restrict_send>(std::shared_ptr<MeshData<Real>> &, std::string& pattern_name);
 template TaskStatus
-SendBoundBufs<BoundaryType::gmg_prolongate_send>(std::shared_ptr<MeshData<Real>> &);
+SendBoundBufs<BoundaryType::gmg_prolongate_send>(std::shared_ptr<MeshData<Real>> &, std::string& pattern_name);
 template TaskStatus
-SendBoundBufs<BoundaryType::flxcor_send>(std::shared_ptr<MeshData<Real>> &);
+SendBoundBufs<BoundaryType::flxcor_send>(std::shared_ptr<MeshData<Real>> &, std::string& pattern_name);
 
 template <BoundaryType bound_type>
-TaskStatus StartReceiveBoundBufs(std::shared_ptr<MeshData<Real>> &md) {
+TaskStatus StartReceiveBoundBufs(std::shared_ptr<MeshData<Real>> &md, std::string &pattern_name) {
   PARTHENON_INSTRUMENT
-
-  begin_pattern("StartReceiveBoundBufs");
 
   Mesh *pmesh = md->GetMeshPointer();
   auto &cache = md->GetBvarsCache().GetSubCache(bound_type, false);
   if (cache.buf_vec.size() == 0)
     InitializeBufferCache<bound_type>(md, &(pmesh->boundary_comm_map), &cache, ReceiveKey,
                                       false);
+
+  begin_pattern(pattern_name.c_str());
 
   std::for_each(std::begin(cache.buf_vec), std::end(cache.buf_vec),
                 [](auto pbuf) { pbuf->TryStartReceive(); });
@@ -198,23 +196,21 @@ TaskStatus StartReceiveBoundBufs(std::shared_ptr<MeshData<Real>> &md) {
 }
 
 template TaskStatus
-StartReceiveBoundBufs<BoundaryType::any>(std::shared_ptr<MeshData<Real>> &);
+StartReceiveBoundBufs<BoundaryType::any>(std::shared_ptr<MeshData<Real>> &, std::string &);
 template TaskStatus
-StartReceiveBoundBufs<BoundaryType::local>(std::shared_ptr<MeshData<Real>> &);
+StartReceiveBoundBufs<BoundaryType::local>(std::shared_ptr<MeshData<Real>> &, std::string &);
 template TaskStatus
-StartReceiveBoundBufs<BoundaryType::nonlocal>(std::shared_ptr<MeshData<Real>> &);
+StartReceiveBoundBufs<BoundaryType::nonlocal>(std::shared_ptr<MeshData<Real>> &, std::string &);
 template TaskStatus
-StartReceiveBoundBufs<BoundaryType::gmg_restrict_recv>(std::shared_ptr<MeshData<Real>> &);
+StartReceiveBoundBufs<BoundaryType::gmg_restrict_recv>(std::shared_ptr<MeshData<Real>> &, std::string &);
 template TaskStatus StartReceiveBoundBufs<BoundaryType::gmg_prolongate_recv>(
-    std::shared_ptr<MeshData<Real>> &);
+    std::shared_ptr<MeshData<Real>> &, std::string &);
 template TaskStatus
-StartReceiveBoundBufs<BoundaryType::flxcor_recv>(std::shared_ptr<MeshData<Real>> &);
+StartReceiveBoundBufs<BoundaryType::flxcor_recv>(std::shared_ptr<MeshData<Real>> &, std::string &);
 
 template <BoundaryType bound_type>
-TaskStatus ReceiveBoundBufs(std::shared_ptr<MeshData<Real>> &md) {
+TaskStatus ReceiveBoundBufs(std::shared_ptr<MeshData<Real>> &md, std::string& pattern_name) {
   PARTHENON_INSTRUMENT
-
-  begin_pattern("ReceiveBoundBufs");
 
   Mesh *pmesh = md->GetMeshPointer();
   auto &cache = md->GetBvarsCache().GetSubCache(bound_type, false);
@@ -222,10 +218,14 @@ TaskStatus ReceiveBoundBufs(std::shared_ptr<MeshData<Real>> &md) {
     InitializeBufferCache<bound_type>(md, &(pmesh->boundary_comm_map), &cache, ReceiveKey,
                                       false);
 
+  begin_pattern(pattern_name.c_str());
+
   bool all_received = true;
   std::for_each(
       std::begin(cache.buf_vec), std::end(cache.buf_vec),
       [&all_received](auto pbuf) { all_received = pbuf->TryReceive() && all_received; });
+
+  end_pattern();
 
   int ibound = 0;
   if (Globals::sparse_config.enabled && all_received) {
@@ -246,28 +246,28 @@ TaskStatus ReceiveBoundBufs(std::shared_ptr<MeshData<Real>> &md) {
         });
   }
 
-  end_pattern();
-
   if (all_received) return TaskStatus::complete;
   return TaskStatus::incomplete;
 }
 
 template TaskStatus
-ReceiveBoundBufs<BoundaryType::any>(std::shared_ptr<MeshData<Real>> &);
+ReceiveBoundBufs<BoundaryType::any>(std::shared_ptr<MeshData<Real>> &, std::string& pattern_name);
 template TaskStatus
-ReceiveBoundBufs<BoundaryType::local>(std::shared_ptr<MeshData<Real>> &);
+ReceiveBoundBufs<BoundaryType::local>(std::shared_ptr<MeshData<Real>> &, std::string& pattern_name);
 template TaskStatus
-ReceiveBoundBufs<BoundaryType::nonlocal>(std::shared_ptr<MeshData<Real>> &);
+ReceiveBoundBufs<BoundaryType::nonlocal>(std::shared_ptr<MeshData<Real>> &, std::string& pattern_name);
 template TaskStatus
-ReceiveBoundBufs<BoundaryType::gmg_restrict_recv>(std::shared_ptr<MeshData<Real>> &);
+ReceiveBoundBufs<BoundaryType::gmg_restrict_recv>(std::shared_ptr<MeshData<Real>> &, std::string& pattern_name);
 template TaskStatus
-ReceiveBoundBufs<BoundaryType::gmg_prolongate_recv>(std::shared_ptr<MeshData<Real>> &);
+ReceiveBoundBufs<BoundaryType::gmg_prolongate_recv>(std::shared_ptr<MeshData<Real>> &, std::string& pattern_name);
 template TaskStatus
-ReceiveBoundBufs<BoundaryType::flxcor_recv>(std::shared_ptr<MeshData<Real>> &);
+ReceiveBoundBufs<BoundaryType::flxcor_recv>(std::shared_ptr<MeshData<Real>> &, std::string& pattern_name);
 
 template <BoundaryType bound_type>
-TaskStatus SetBounds(std::shared_ptr<MeshData<Real>> &md) {
+TaskStatus SetBounds(std::shared_ptr<MeshData<Real>> &md, std::string& pattern_name) {
   PARTHENON_INSTRUMENT
+
+  begin_pattern(pattern_name.c_str());
 
   Mesh *pmesh = md->GetMeshPointer();
   auto &cache = md->GetBvarsCache().GetSubCache(bound_type, false);
@@ -362,18 +362,21 @@ TaskStatus SetBounds(std::shared_ptr<MeshData<Real>> &md) {
     refinement::Restrict(resolved_packages, cache.prores_cache, pmb->cellbounds,
                          pmb->c_cellbounds);
   }
+
+  end_pattern();
+
   return TaskStatus::complete;
 }
 
-template TaskStatus SetBounds<BoundaryType::any>(std::shared_ptr<MeshData<Real>> &);
-template TaskStatus SetBounds<BoundaryType::local>(std::shared_ptr<MeshData<Real>> &);
-template TaskStatus SetBounds<BoundaryType::nonlocal>(std::shared_ptr<MeshData<Real>> &);
+template TaskStatus SetBounds<BoundaryType::any>(std::shared_ptr<MeshData<Real>> &, std::string &pattern_name);
+template TaskStatus SetBounds<BoundaryType::local>(std::shared_ptr<MeshData<Real>> &, std::string &pattern_name);
+template TaskStatus SetBounds<BoundaryType::nonlocal>(std::shared_ptr<MeshData<Real>> &, std::string & pattern_name);
 template TaskStatus
-SetBounds<BoundaryType::gmg_restrict_recv>(std::shared_ptr<MeshData<Real>> &);
+SetBounds<BoundaryType::gmg_restrict_recv>(std::shared_ptr<MeshData<Real>> &, std::string & pattern_name);
 template TaskStatus
-SetBounds<BoundaryType::gmg_prolongate_recv>(std::shared_ptr<MeshData<Real>> &);
+SetBounds<BoundaryType::gmg_prolongate_recv>(std::shared_ptr<MeshData<Real>> &, std::string& pattern_name);
 template TaskStatus
-SetBounds<BoundaryType::flxcor_recv>(std::shared_ptr<MeshData<Real>> &);
+SetBounds<BoundaryType::flxcor_recv>(std::shared_ptr<MeshData<Real>> &, std::string& pattern_name);
 
 template <BoundaryType bound_type>
 TaskStatus ProlongateBounds(std::shared_ptr<MeshData<Real>> &md) {
@@ -449,9 +452,14 @@ TaskID AddBoundaryExchangeTasks(TaskID dependency, TaskList &tl,
 
   // auto out = (pro_local | pro);
 
-  auto send = tl.AddTask(dependency, TF(SendBoundBufs<bounds>), md);
-  auto recv = tl.AddTask(dependency, TF(ReceiveBoundBufs<bounds>), md);
-  auto set = tl.AddTask(recv, TF(SetBounds<bounds>), md);
+  std::string send_name = "AddBoundaryExchangeTasks_send";
+  auto send = tl.AddTask(dependency, TF(SendBoundBufs<bounds>), md, send_name);
+
+  std::string recv_name = "AddBoundaryExchangeTasks_recv";
+  auto recv = tl.AddTask(dependency, TF(ReceiveBoundBufs<bounds>), md, recv_name);
+
+  std::string set_name = "AddBoundaryExchangeTasks_set";
+  auto set = tl.AddTask(recv, TF(SetBounds<bounds>), md, set_name);
 
   auto pro = set;
   if (md->GetMeshPointer()->multilevel) {
@@ -473,9 +481,14 @@ AddBoundaryExchangeTasks<BoundaryType::gmg_same>(TaskID, TaskList &,
 TaskID AddFluxCorrectionTasks(TaskID dependency, TaskList &tl,
                               std::shared_ptr<MeshData<Real>> &md, bool multilevel) {
   if (!multilevel) return dependency;
-  tl.AddTask(dependency, TF(SendBoundBufs<BoundaryType::flxcor_send>), md);
+  std::string send_name = "AddFluxCorrectionTasks_send";
+  tl.AddTask(dependency, TF(SendBoundBufs<BoundaryType::flxcor_send>), md, send_name);
+
+  std::string recv_name = "AddFluxCorrectionTasks_recv";
   auto receive =
-      tl.AddTask(dependency, TF(ReceiveBoundBufs<BoundaryType::flxcor_recv>), md);
-  return tl.AddTask(receive, TF(SetBounds<BoundaryType::flxcor_recv>), md);
+      tl.AddTask(dependency, TF(ReceiveBoundBufs<BoundaryType::flxcor_recv>), md, recv_name);
+
+  std::string set_name = "AddFluxCorrectionTasks_set";
+  return tl.AddTask(receive, TF(SetBounds<BoundaryType::flxcor_recv>), md, set_name);
 }
 } // namespace parthenon
