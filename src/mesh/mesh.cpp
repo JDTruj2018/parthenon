@@ -60,6 +60,8 @@
 #include "utils/error_checking.hpp"
 #include "utils/partition_stl_containers.hpp"
 
+#include "vernier.h"
+
 namespace parthenon {
 Mesh::Mesh(ParameterInput *pin, ApplicationInput *app_in, Packages_t &packages,
            base_constructor_selector_t)
@@ -647,6 +649,8 @@ void Mesh::CommunicateBoundaries(std::string md_name,
   bool all_sent;
   std::int64_t send_iters = 0;
 
+  begin_pattern("MeshCommunicateBoundaries");
+
   std::string mesh_send_name = "MeshCommunicateBoundaries_send";
   auto partitions = GetDefaultBlockPartitions();
   do {
@@ -707,6 +711,8 @@ void Mesh::CommunicateBoundaries(std::string md_name,
     }
     ApplyBoundaryConditionsOnCoarseOrFineMD(md, false);
   }
+
+  end_pattern();
 }
 
 void Mesh::PreCommFillDerived() {
